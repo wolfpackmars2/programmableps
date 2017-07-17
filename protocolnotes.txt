@@ -1,0 +1,78 @@
+Standard serial port protocol.  All commands are terminated with <cr><lf> (\r\n)
+
+known commands:
+STATUS? - Get status (see status flags below)
+ISET1? - Get realtime current limit value
+VSET1? - Get realtime voltage limit value
+IOUT1? - Get realtime current output value
+VOUT1? - Get realtime voltage output value
+*IDN? - Device ID? (returns "QJE3005PV1.0")
+VSET1:nn.nn - Set voltage limit (max 30.00?)
+ISET1:n.nnn - Set current (max 5.200)
+OUTPUT0 - Disable output
+OUTPUT1 - Enable output
+
+
+Status appears to be a read only value of status flags.  It contains 3 flag values: ABC
+A = 0 = Constant Current Mode
+A = 1 = Constant Voltage Mode
+B = 0 = Output Off
+B = 1 = Output on
+C = 0 = OCP OK
+C = 1 = Over Current Protection (OCP) tripped
+
+Observed return status values:
+xxx - When the device doesn't respond to "STATUS?\r\n" means device not connected or not communicating
+000 - When device first connects and no data has been sent to device, it returns this status
+001 - Over Current Protection tripped, all output off
+010 - Constant Current, output on
+110 - Constant Voltage, output on
+100 - Constant Voltage, output off
+
+In other words, possible values are:
+*OCP OK*
+00 - output off
+01 - output on
+10 - output off
+11 - output on
+
+*OCP TRIPPED*
+001
+
+
+When the tekpower software first connects to the device, it sends the following data over serial:
+ISET1?\r\nVSET1?\r\nSTATUS?\r\n
+
+This translates to: What is the current limit set to? What is the voltage limit set to? What is your status?
+
+If the status returned is either 01 or 11, the output is on and the software will continuously send:
+IOUT1?\r\nVOUT1?\r\nSTATUS?\r\n
+In a loop every 500ms or so. This translates to:
+
+What is the realtime current output? what is the realtime voltage output? what is your status?
+
+The software uses the return values from these commands to update the software display.
+
+The output can be toggled by sending either "OUTPUT1\r\n" or "OUTPUT0\r\n" to toggle the output on/off.
+
+When the status indicates the output is off, the software will continuously send:
+STATUS?\r\n
+In a loop every 500ms or so, to monitor the status of the device.
+
+
+*OVERCURRENT PROTECTION*
+There appears to be no command available to SET or GET the current value of the OCP.  The only thing we can
+know about the OCP is whether it is tripped or not, through the status flag value xx0 (OCP OK) or xx1 (OCP TRIP)
+
+HOWEVER, it is possible to set a *SOFT* OCP in software. While monitoring the realtime current output,
+the output can be disabled if the realtime current output goes over a specified value.
+
+In this manner, a *SOFT* OVP can also be configured.
+
+Therefore, it is recommended to set the OCP protection on the device PRIOR to connecting your computer to
+its maximum value. For TekPower TP3005P, this seems to be 5.200 amps.  This way, you can set *SOFT* OCP
+to any value below 5.200 amps. If, somehow, the current ever goes over 5.200 amps, the hardware OCP will
+kick in, and the status will indicate that the OCP has been triggered.
+
+When receiving data from the device, the device will send '\n' to signal the end of data.
+

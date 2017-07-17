@@ -1,0 +1,13 @@
+The TekPower TP3005P shows up in Linux with lsusb as the following:
+
+ID 10c4:ea60 Cygnal Integrated Products, Inc. CP210x UART Bridge / myAVR mySmartUSB light
+
+This device will be present whether the unit is actually powered on or not. It is NOT possible to toggle the power on/off of the unit - it must be powered from the power switch on the unit.
+
+Most likely, it's present due to the USB port powering up the CP210x UART Bridge.
+
+Also, a new tty will be created in /dev.  e.g. /dev/ttyUSB0
+
+Communicating with this new serial port was tricky.  I finally got it to work with minicom. I had to use the following configuration: 9600 baud, no parity, 8N1 bits. Hardware flow control must be disabled. Software flow control works either way.
+
+I also got it to work with miniterm.py! A tool provided by the pySerial library. Home run! After much trial and error, I FINALLY determined that python was translating the escape sequence '\r\n' into the binary CRLF, when the power supply is expecting the literal string.
